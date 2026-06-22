@@ -25,6 +25,10 @@ jobs:
         flutter-version: '3.22.x'
         channel: 'stable'
         
+    - name: Create Flet App Structure
+      run: |
+        flet create . --template app
+        
     - name: Build APK
       run: |
         flet build apk --no-public-signature
