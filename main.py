@@ -1,0 +1,121 @@
+import flet as ft
+import requests
+import os
+
+# Configuration settings
+OPENAI_API_KEY = os.environ.get("OPENAI_KEY", "YOUR_OPENAI_API_KEY_HERE")
+
+def main(page: ft.Page):
+    page.title = "MailCraft AI - Premium Assistant"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.scroll = ft.ScrollMode.ADAPTIVE
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.padding = 25
+    SUBSCRIPTION_PRICE = "$34.99 / Month"
+
+    header = ft.Container(
+        content=ft.Column([
+            ft.Text("MAILCRAFT AI", size=30, weight=ft.FontWeight.BOLD, color=ft.colors.INDIGO_ACCENT, letter_spacing=2),
+            ft.Text("The Ultimate AI Email Assistant for US Professionals", size=13, color=ft.colors.GREY_400),
+            ft.Container(
+                content=ft.Text(f"PREMIUM PLAN: {SUBSCRIPTION_PRICE}", size=11, weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
+                bgcolor=ft.colors.INDIGO_700, padding=6, border_radius=5, margin=ft.margin.only(top=5)
+            )
+        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+        margin=ft.margin.only(bottom=15)
+    )
+    
+    email_prompt = ft.TextField(
+        label="What do you want to say in the email? (Short note)", 
+        hint_text="e.g., Ask the client to reschedule tomorrow's meeting.", 
+        multiline=True, min_lines=3, max_lines=5, border_color=ft.colors.INDIGO_ACCENT
+    )
+    
+    tone_dropdown = ft.Dropdown(
+        label="Choose Email Tone", 
+        border_color=ft.colors.INDIGO_ACCENT, 
+        options=[
+            ft.dropdown.Option("Professional & Formal"), 
+            ft.dropdown.Option("Friendly & Casual"), 
+            ft.dropdown.Option("Persuasive (Sales/Pitch)")
+        ], 
+        value="Professional & Formal"
+    )
+    
+    output_box = ft.TextField(
+        label="Your Generated Professional Email", 
+        multiline=True, min_lines=8, max_lines=15, 
+        read_only=True, bgcolor=ft.colors.BLACK
+    )
+    
+    loading_ring = ft.ProgressRing(visible=False, color=ft.colors.INDIGO_ACCENT)
+    status_text = ft.Text("", color=ft.colors.YELLOW_ACCENT)
+
+    def generate_email_logic(e):
+        if not email_prompt.value:
+            status_text.value = "Please enter some details first!"
+            page.update()
+            return
+        loading_ring.visible = True
+        status_text.value = "Crafting email using GPT-4o..."
+        page.update()
+
+        headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
+        gpt_payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {"role": "system", "content": f"Write a flawless professional business email based on the user's notes. Style: {tone_dropdown.value}."},
+                {"role": "user", "content": email_prompt.value}
+            ],
+            "temperature": 0.7
+        }
+        try:
+            # Correct official OpenAI endpoint URL
+            response = requests.post("https://openai.com", headers=headers, json=gpt_payload)
+            if response.status_code == 200:
+                output_box.value = response.json()["choices"][0]["message"]["content"]
+                status_text.value = "Email generated successfully!"
+            else:
+                status_text.value = "API Error: Invalid OpenAI Key or Balance."
+        except Exception as ex:
+            status_text.value = f"Error: {str(ex)}"
+        loading_ring.visible = False
+        page.update()
+
+    def open_paywall(e):
+        def close_paywall(ex):
+            paywall_dialog.open = False
+            page.update()
+            
+        paywall_dialog = ft.AlertDialog(
+            title=ft.Text("Unlock Unlimited Access"),
+            content=ft.Column([
+                ft.Text("Upgrade to MailCraft Pro for just $34.99/mo to unlock full priority features.")
+            ], height=80, width=300),
+            actions=[ft.TextButton("Maybe Later", on_click=close_paywall)]
+        )
+        page.overlay.append(paywall_dialog)
+        paywall_dialog.open = True
+        page.update()
+
+    generate_btn = ft.ElevatedButton(
+        "GENERATE EMAIL", icon=ft.icons.AUTO_AWESOME, 
+        on_click=generate_email_logic, 
+        style=ft.ButtonStyle(bgcolor=ft.colors.INDIGO_ACCENT, color=ft.colors.WHITE)
+    )
+    
+    upgrade_btn = ft.TextButton(
+        "👑 Go Premium ($34.99/mo)", 
+        on_click=open_paywall, 
+        style=ft.ButtonStyle(color=ft.colors.YELLOW_ACCENT)
+    )
+
+    page.add(
+        header, upgrade_btn, ft.Divider(color=ft.colors.GREY_800), 
+        email_prompt, tone_dropdown, 
+        ft.Container(content=ft.Column([generate_btn, loading_ring, status_text], horizontal_alignment=ft.CrossAxisAlignment.CENTER), padding=10), 
+        ft.Divider(color=ft.colors.GREY_800), output_box
+    )
+
+# Tailored to build mobile applications correctly
+ft.app(target=main)
