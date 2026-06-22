@@ -13,8 +13,10 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
-        
+            - name: Build APK
+      run: |
+        flet build apk
+
     - name: Install Dependencies
       run: |
         pip install flet requests
